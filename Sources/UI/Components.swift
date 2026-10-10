@@ -54,7 +54,12 @@ struct RemoteImage: View {
     var body: some View {
         ZStack {
             if let img {
-                Image(uiImage: img).resizable().aspectRatio(contentMode: fill ? .fill : .fit)
+                if fill {
+                    // preenche sem aumentar o espaço da tela (a sobra é cortada)
+                    Color.clear.overlay(Image(uiImage: img).resizable().scaledToFill()).clipped()
+                } else {
+                    Image(uiImage: img).resizable().scaledToFit()
+                }
             } else if !placeholder.isEmpty {
                 Image(systemName: placeholder).font(.system(size: UIScale.v(18, 24, 40))).foregroundColor(.white.opacity(0.25))
             } else {
