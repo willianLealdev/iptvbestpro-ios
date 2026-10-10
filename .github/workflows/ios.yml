@@ -4,6 +4,9 @@
 #  - "Run workflow" com "Enviar para o TestFlight" marcado: assina e manda para o App Store Connect
 #    (precisa dos segredos ASC_KEY, ASC_KEY_ID, ASC_ISSUER_ID e APPLE_TEAM_ID no GitHub).
 name: ios-build
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
 on:
   push:
     branches: [main]

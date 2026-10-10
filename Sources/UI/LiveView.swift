@@ -253,7 +253,10 @@ struct LiveView: View {
         }
         #if DEBUG
         // teste automático: abre o primeiro canal em tela cheia
-        if app.debugScreen == "play", let c = chans.first { openFull(c) }
+        if app.debugScreen == "play" {
+            if chans.isEmpty, let f = cats.first { await openCat(f) }
+            if let c = chans.first { openFull(c) }
+        }
         #endif
     }
 
