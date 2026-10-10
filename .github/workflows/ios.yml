@@ -86,7 +86,7 @@ jobs:
             xcrun simctl io "$udid" screenshot "shots/$name-1-abertura.png"
             if [ -n "$BP_TEST_CODE" ]; then
               xcrun simctl terminate "$udid" com.iptvbestpro.app || true
-              for scr in home live movies settings; do
+              for scr in home live play movies series settings; do
                 xcrun simctl launch "$udid" com.iptvbestpro.app -bpTestCode "$BP_TEST_CODE" -bpScreen $scr; sleep 25
                 xcrun simctl io "$udid" screenshot "shots/$name-2-$scr.png"
                 xcrun simctl terminate "$udid" com.iptvbestpro.app || true

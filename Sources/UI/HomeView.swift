@@ -84,7 +84,7 @@ struct HomeView: View {
         .onAppear {
             app.homeAppeared()
             #if DEBUG
-            if let sc = app.debugScreen, path.isEmpty, let a = HomeAction(rawValue: sc) {
+            if let sc = app.debugScreen, path.isEmpty, let a = HomeAction(rawValue: sc == "play" ? "live" : sc) {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) { run(a) }
             }
             #endif

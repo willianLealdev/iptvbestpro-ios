@@ -247,6 +247,14 @@ struct LiveView: View {
             }
             if DeviceInfo.isPhone { showChans = false }
         }
+        // tela larga (iPad, Apple TV): já mostra os canais da primeira categoria
+        if catID.isEmpty && !DeviceInfo.isPhone, let first = cats.first(where: { !Config.isAdult($0.s("category_name")) }) {
+            await openCat(first)
+        }
+        #if DEBUG
+        // teste automático: abre o primeiro canal em tela cheia
+        if app.debugScreen == "play", let c = chans.first { openFull(c) }
+        #endif
     }
 
     private func tapCat(_ c: JObj) async {
