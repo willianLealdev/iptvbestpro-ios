@@ -63,6 +63,13 @@ jobs:
           (cd out && zip -qry IPTVBestPro-sem-assinatura.ipa Payload)
           ls -la out
 
+      - name: Rede (imagens do painel)
+        run: |
+          for u in https://iptvbestpro.com/assets/images/brand/iptvbestpro_logo.png https://iptvbestpro.com/tv/bg.jpg http://iptvbestpro.com/images/; do
+            curl -s -o /dev/null -w "$u %{http_code} %{content_type}
+" -A IPTVSmartersPlayer "$u" || true
+          done
+
       - name: Prints no simulador
         env:
           BP_TEST_CODE: ${{ secrets.BP_TEST_CODE }}
@@ -85,6 +92,7 @@ jobs:
                 xcrun simctl terminate "$udid" com.iptvbestpro.app || true
               done
             fi
+            xcrun simctl spawn "$udid" log show --last 6m --style compact --predicate 'eventMessage CONTAINS "[bp-"' > "shots/$name-log.txt" 2>&1 || true
             xcrun simctl shutdown "$udid" || true
           }
           shoot "$(pick 'iPhone 16 Pro')" dd/Build/Products/Debug-iphonesimulator/IPTVBestPro.app iphone
@@ -99,6 +107,7 @@ jobs:
           path: |
             out/*.ipa
             shots/*.png
+            shots/*.txt
             *.log
 
   testflight:

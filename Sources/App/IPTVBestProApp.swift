@@ -37,7 +37,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         // Notificações (iPhone e iPad): o mesmo OneSignal do app Android; o aparelho é identificado pelo ID do painel
         OneSignal.initialize(Config.oneSignalID, withLaunchOptions: launchOptions)
         OneSignal.login(DeviceID.value)
-        OneSignal.Notifications.requestPermission({ _ in }, fallbackToSettings: false)
+        NotificationCenter.default.addObserver(forName: .bpAskNotifications, object: nil, queue: .main) { _ in
+            OneSignal.Notifications.requestPermission({ _ in }, fallbackToSettings: false)
+        }
         #endif
         return true
     }

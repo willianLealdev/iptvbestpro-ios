@@ -367,7 +367,7 @@ struct HomeTile: View {
         let side = min(size.width, size.height)
         let radius: CGFloat = c.style == .round ? side : UIScale.v(14, 16, 22)
         let iconSize = max(16, side * c.iconScale)
-        let fontSize = max(11, min(side * 0.13, size.width * 0.075) * c.labelScale)
+        let fontSize = max(UIScale.v(11, 13, 24), min(side * 0.13, size.width * 0.075) * c.labelScale)
         ZStack {
             // fundo
             if let c2 = c.c2 {

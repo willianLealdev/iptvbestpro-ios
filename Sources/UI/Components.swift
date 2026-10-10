@@ -19,10 +19,25 @@ final class ImageCache {
     func cached(_ url: String) -> UIImage? { mem.object(forKey: url as NSString) }
     func load(_ url: String) async -> UIImage? {
         if let i = cached(url) { return i }
-        guard let u = URL(string: url), u.scheme?.hasPrefix("http") == true,
-              let (d, _) = try? await session.data(from: u), let img = UIImage(data: d) else { return nil }
-        mem.setObject(img, forKey: url as NSString)
-        return img
+        guard let u = URL(string: url.trimmed), u.scheme?.hasPrefix("http") == true else { return nil }
+        var req = URLRequest(url: u)
+        req.setValue("image/*,*/*", forHTTPHeaderField: "Accept")
+        do {
+            let (d, resp) = try await session.data(for: req)
+            guard let img = UIImage(data: d) else {
+                #if DEBUG
+                NSLog("[bp-img] não é imagem %@ status=%d tipo=%@ bytes=%d", url, (resp as? HTTPURLResponse)?.statusCode ?? 0, (resp as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type") ?? "", d.count)
+                #endif
+                return nil
+            }
+            mem.setObject(img, forKey: url as NSString)
+            return img
+        } catch {
+            #if DEBUG
+            NSLog("[bp-img] erro %@ %@", url, String(describing: error))
+            #endif
+            return nil
+        }
     }
     func clear() {
         mem.removeAllObjects()
@@ -186,7 +201,7 @@ struct TopBar<Trailing: View>: View {
                 .frame(width: UIScale.v(38, 46, 80), height: UIScale.v(38, 46, 80))
             if !title.isEmpty {
                 Text(title).font(.system(size: UIScale.title, weight: .bold)).foregroundColor(.white).lineLimit(1)
-            } else if app.brand.showName {
+            } else if app.brand.showName && !(DeviceInfo.isPhone && Trailing.self != EmptyView.self) {
                 Text(app.brand.name).font(.system(size: UIScale.title, weight: .bold)).foregroundColor(.white).lineLimit(1)
             }
             Spacer(minLength: 8)

@@ -8,6 +8,8 @@ enum Prefs {
 
     static func str(_ k: String, _ d: String = "") -> String { ud.string(forKey: k) ?? d }
     static func set(_ k: String, _ v: String?) { if let v { ud.set(v, forKey: k) } else { ud.removeObject(forKey: k) } }
+    /// Grava já no disco (ID do aparelho e situação da ativação não podem se perder se o app for fechado na hora)
+    static func flush() { ud.synchronize() }
     static func int(_ k: String, _ d: Int = 0) -> Int { ud.object(forKey: k) == nil ? d : ud.integer(forKey: k) }
     static func setInt(_ k: String, _ v: Int) { ud.set(v, forKey: k) }
     static func bool(_ k: String, _ d: Bool) -> Bool { ud.object(forKey: k) == nil ? d : ud.bool(forKey: k) }
@@ -26,7 +28,7 @@ enum Prefs {
     }
     /// Aparelho desvinculado/resetado: apaga tudo, menos o idioma e as preferências do player
     static func clearLocal() {
-        let keep: Set<String> = ["lang", "buffer_mode", "time_24h", "live_format", "autoplay_next", "cat_reverse", "card_title",
+        let keep: Set<String> = ["bp_did", "lang", "buffer_mode", "time_24h", "live_format", "autoplay_next", "cat_reverse", "card_title",
                                  "multi_layout", "auto_update_h", "subtitles", "adult_pin", "recent_limit"]
         for k in ud.dictionaryRepresentation().keys where k.hasPrefix("bp_") || k.hasPrefix("pl_") {
             if !keep.contains(k) { ud.removeObject(forKey: k) }
@@ -69,11 +71,14 @@ enum DeviceID {
         let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
                                 kSecAttrAccount as String: "id", kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]
         var out: AnyObject?
-        guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let d = out as? Data else { return UserDefaults.standard.string(forKey: "bp_did") }
-        return String(data: d, encoding: .utf8)
+        guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let d = out as? Data, let v = String(data: d, encoding: .utf8), !v.isEmpty else {
+            return UserDefaults.standard.string(forKey: "bp_did")
+        }
+        return v
     }
     private static func save(_ v: String) {
         UserDefaults.standard.set(v, forKey: "bp_did")
+        UserDefaults.standard.synchronize()
         let base: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: "id"]
         SecItemDelete(base as CFDictionary)
         var add = base

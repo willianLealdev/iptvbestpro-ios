@@ -130,6 +130,7 @@ final class AppState: ObservableObject {
     func saveStatus(_ o: JObj) {
         status = o
         Prefs.setJSON("bp_status", o)
+        Prefs.flush()
     }
 
     private func isNetwork(_ e: Error) -> Bool { if case APIError.network = e { return true }; return false }
@@ -319,8 +320,17 @@ final class AppState: ObservableObject {
 
     func homeAppeared() {
         homeVisible = true
+        askNotifications()
         if applyPending() { return }
         Task { await licenseCheck(force: false) }
+    }
+
+    /// Permissão de notificações: só depois que o cliente já está usando o app (não na primeira tela)
+    private var askedNotifications = false
+    private func askNotifications() {
+        guard !askedNotifications else { return }
+        askedNotifications = true
+        NotificationCenter.default.post(name: .bpAskNotifications, object: nil)
     }
 
     // MARK: - Aviso de vencimento
@@ -342,4 +352,5 @@ final class AppState: ObservableObject {
 extension Notification.Name {
     /// Licença caiu: para tudo o que está tocando
     static let bpStopPlayback = Notification.Name("bpStopPlayback")
+    static let bpAskNotifications = Notification.Name("bpAskNotifications")
 }
