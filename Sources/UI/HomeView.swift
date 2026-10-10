@@ -328,10 +328,12 @@ struct ThemeHome: View {
                 HStack(spacing: gap) {
                     ForEach(big.dropFirst()) { sp in tile(sp, CGSize(width: (w - gap) / 2, height: w * 0.4)).frame(width: (w - gap) / 2, height: w * 0.4) }
                 }
-                let cols = Array(repeating: GridItem(.flexible(), spacing: gap), count: UIScale.phone ? 2 : 3)
+                let n = UIScale.phone ? 2 : 3
+                let cw = (w - gap * CGFloat(n - 1)) / CGFloat(n)
+                let cols = Array(repeating: GridItem(.fixed(cw), spacing: gap), count: n)
                 LazyVGrid(columns: cols, spacing: gap) {
                     ForEach(small) { sp in
-                        tile(Self.flat(sp), CGSize(width: w / 2, height: 86)).frame(height: 86)
+                        tile(Self.flat(sp), CGSize(width: cw, height: 86)).frame(width: cw, height: 86)
                     }
                 }
             }
