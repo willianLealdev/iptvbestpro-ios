@@ -1,0 +1,117 @@
+# IPTV Best Pro — app de iPhone, iPad e Apple TV (um só app na App Store: compra universal, mesmo ID)
+# O projeto do Xcode é gerado pelo XcodeGen (no Mac do GitHub Actions): xcodegen generate
+name: IPTVBestPro
+options:
+  bundleIdPrefix: com.iptvbestpro
+  deploymentTarget:
+    iOS: "16.0"
+    tvOS: "16.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+
+settings:
+  base:
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: $(BP_TEAM_ID)
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    LOCALIZATION_PREFERS_STRING_CATALOGS: NO
+
+packages:
+  VLCKit:
+    url: https://github.com/tylerjonesio/vlckit-spm
+    exactVersion: 3.6.0
+  OneSignal:
+    url: https://github.com/OneSignal/OneSignal-XCFramework
+    exactVersion: 5.8.0
+
+targets:
+  IPTVBestPro:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+      - path: Resources/iOS/Assets.xcassets
+    dependencies:
+      - package: VLCKit
+        product: VLCKitSPM
+      - package: OneSignal
+        product: OneSignalFramework
+    entitlements:
+      path: Resources/iOS/IPTVBestPro.entitlements
+      properties:
+        aps-environment: development
+    info:
+      path: Resources/iOS/Info.plist
+      properties:
+        CFBundleDisplayName: IPTV Best Pro
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, pt, es]
+        CFBundleAllowMixedLocalizations: true
+        ITSAppUsesNonExemptEncryption: false
+        LSRequiresIPhoneOS: true
+        UILaunchScreen:
+          UIColorName: LaunchBG
+          UIImageName: LaunchLogo
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UIBackgroundModes: [audio, remote-notification]
+        UIRequiresFullScreen: false
+        UIStatusBarStyle: UIStatusBarStyleLightContent
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        # os servidores IPTV usam http: o app precisa poder abrir esses endereços (listas e vídeos)
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+          NSAllowsArbitraryLoadsForMedia: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.iptvbestpro.app
+        PRODUCT_NAME: IPTVBestPro
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+    scheme:
+      testTargets: []
+
+  IPTVBestProTV:
+    type: application
+    platform: tvOS
+    sources:
+      - path: Sources
+      - path: Resources/tvOS/Assets.xcassets
+    dependencies:
+      - package: VLCKit
+        product: VLCKitSPM
+    info:
+      path: Resources/tvOS/Info.plist
+      properties:
+        CFBundleDisplayName: IPTV Best Pro
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, pt, es]
+        CFBundleAllowMixedLocalizations: true
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen:
+          UIImageName: LaunchLogo
+        UIBackgroundModes: [audio]
+        UIUserInterfaceStyle: Dark
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+          NSAllowsArbitraryLoadsForMedia: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.iptvbestpro.app
+        PRODUCT_NAME: IPTVBestProTV
+        TARGETED_DEVICE_FAMILY: "3"
+        ASSETCATALOG_COMPILER_APPICON_NAME: App Icon & Top Shelf Image
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    scheme:
+      testTargets: []

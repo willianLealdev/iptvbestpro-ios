@@ -1,0 +1,136 @@
+# Compila o app de iPhone/iPad e de Apple TV num Mac do GitHub (não precisa de Mac em casa).
+#  - a cada envio: compila os dois, gera o IPA sem assinatura (para instalar no iPhone pelo Sideloadly)
+#    e tira prints no simulador (iPhone, iPad e Apple TV) para conferir as telas;
+#  - "Run workflow" com "Enviar para o TestFlight" marcado: assina e manda para o App Store Connect
+#    (precisa dos segredos ASC_KEY, ASC_KEY_ID, ASC_ISSUER_ID e APPLE_TEAM_ID no GitHub).
+name: ios-build
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: "Enviar para o TestFlight (iPhone, iPad e Apple TV)"
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          XC=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
+
+      - name: Gerar o projeto
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Baixar pacotes (VLC e OneSignal)
+        run: xcodebuild -resolvePackageDependencies -project IPTVBestPro.xcodeproj -clonedSourcePackagesDirPath spm
+
+      - name: Compilar iPhone/iPad (simulador)
+        run: |
+          set -o pipefail
+          xcodebuild build -project IPTVBestPro.xcodeproj -scheme IPTVBestPro -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath dd -clonedSourcePackagesDirPath spm \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee ios-sim.log | grep -E "error:|warning: .*deprecated|BUILD" || true
+          grep -q "BUILD SUCCEEDED" ios-sim.log
+
+      - name: Compilar Apple TV (simulador)
+        run: |
+          set -o pipefail
+          xcodebuild build -project IPTVBestPro.xcodeproj -scheme IPTVBestProTV -configuration Debug \
+            -destination 'generic/platform=tvOS Simulator' -derivedDataPath dd -clonedSourcePackagesDirPath spm \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee tv-sim.log | grep -E "error:|BUILD" || true
+          grep -q "BUILD SUCCEEDED" tv-sim.log
+
+      - name: IPA sem assinatura (para testar no iPhone)
+        run: |
+          xcodebuild build -project IPTVBestPro.xcodeproj -scheme IPTVBestPro -configuration Release \
+            -destination 'generic/platform=iOS' -derivedDataPath dd -clonedSourcePackagesDirPath spm \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO 2>&1 | tee ios-dev.log | grep -E "error:|BUILD" || true
+          grep -q "BUILD SUCCEEDED" ios-dev.log
+          mkdir -p out/Payload
+          cp -R dd/Build/Products/Release-iphoneos/IPTVBestPro.app out/Payload/
+          (cd out && zip -qry IPTVBestPro-sem-assinatura.ipa Payload)
+          ls -la out
+
+      - name: Prints no simulador
+        env:
+          BP_TEST_CODE: ${{ secrets.BP_TEST_CODE }}
+        run: |
+          mkdir -p shots
+          pick() { xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; l=[x['udid'] for k,v in d.items() for x in v if x['name'].startswith('$1')]; print(l[0] if l else '')"; }
+          shoot() {
+            local udid=$1 app=$2 name=$3
+            [ -z "$udid" ] && { echo "sem simulador para $name"; return; }
+            xcrun simctl boot "$udid" || true
+            xcrun simctl bootstatus "$udid" -b || true
+            xcrun simctl install "$udid" "$app"
+            xcrun simctl launch "$udid" com.iptvbestpro.app; sleep 20
+            xcrun simctl io "$udid" screenshot "shots/$name-1-abertura.png"
+            if [ -n "$BP_TEST_CODE" ]; then
+              xcrun simctl terminate "$udid" com.iptvbestpro.app || true
+              for scr in home live movies settings; do
+                xcrun simctl launch "$udid" com.iptvbestpro.app -bpTestCode "$BP_TEST_CODE" -bpScreen $scr; sleep 25
+                xcrun simctl io "$udid" screenshot "shots/$name-2-$scr.png"
+                xcrun simctl terminate "$udid" com.iptvbestpro.app || true
+              done
+            fi
+            xcrun simctl shutdown "$udid" || true
+          }
+          shoot "$(pick 'iPhone 16 Pro')" dd/Build/Products/Debug-iphonesimulator/IPTVBestPro.app iphone
+          shoot "$(pick 'iPad Pro 13')" dd/Build/Products/Debug-iphonesimulator/IPTVBestPro.app ipad
+          shoot "$(pick 'Apple TV 4K')" dd/Build/Products/Debug-appletvsimulator/IPTVBestProTV.app appletv
+          ls -la shots
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iptvbestpro-ios
+          path: |
+            out/*.ipa
+            shots/*.png
+            *.log
+
+  testflight:
+    if: github.event_name == 'workflow_dispatch' && inputs.upload
+    needs: build
+    runs-on: macos-15
+    timeout-minutes: 75
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      TEAM: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode
+        run: |
+          XC=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XC"
+      - name: Gerar o projeto
+        run: brew install xcodegen && xcodegen generate
+      - name: Chave da API da Apple
+        env:
+          ASC_KEY: ${{ secrets.ASC_KEY }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          printf '%s' "$ASC_KEY" > ~/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8
+          /usr/libexec/PlistBuddy -c "Set :teamID $TEAM" ExportOptions.plist
+      - name: Assinar e enviar (iPhone/iPad e Apple TV)
+        run: |
+          AUTH="-allowProvisioningUpdates -authenticationKeyPath $HOME/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8 -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID"
+          for pair in "IPTVBestPro:iOS" "IPTVBestProTV:tvOS"; do
+            S=${pair%%:*}; P=${pair##*:}
+            xcodebuild archive -project IPTVBestPro.xcodeproj -scheme $S -configuration Release -destination "generic/platform=$P" \
+              -archivePath build/$S.xcarchive BP_TEAM_ID=$TEAM CURRENT_PROJECT_VERSION=${{ github.run_number }} $AUTH -quiet
+            xcodebuild -exportArchive -archivePath build/$S.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build/$S $AUTH
+          done
