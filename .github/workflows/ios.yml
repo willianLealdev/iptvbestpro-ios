@@ -98,7 +98,7 @@ jobs:
             xcrun simctl spawn "$udid" log show --last 6m --style compact --predicate 'eventMessage CONTAINS "[bp-"' > "shots/$name-log.txt" 2>&1 || true
             xcrun simctl shutdown "$udid" || true
           }
-          shoot "$(pick 'iPhone 16 Pro')" dd/Build/Products/Debug-iphonesimulator/IPTVBestPro.app iphone
+          shoot "$(pick 'iPhone 16 Pro Max')" dd/Build/Products/Debug-iphonesimulator/IPTVBestPro.app iphone
           shoot "$(pick 'iPad Pro 13')" dd/Build/Products/Debug-iphonesimulator/IPTVBestPro.app ipad
           shoot "$(pick 'Apple TV 4K')" dd/Build/Products/Debug-appletvsimulator/IPTVBestProTV.app appletv
           ls -la shots

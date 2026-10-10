@@ -329,6 +329,9 @@ final class AppState: ObservableObject {
     private var askedNotifications = false
     private func askNotifications() {
         guard !askedNotifications else { return }
+        #if DEBUG
+        if debugScreen != nil { return } // prints automáticos da loja: sem o aviso por cima
+        #endif
         askedNotifications = true
         NotificationCenter.default.post(name: .bpAskNotifications, object: nil)
     }
