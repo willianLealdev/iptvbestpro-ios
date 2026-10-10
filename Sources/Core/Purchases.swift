@@ -22,7 +22,35 @@ final class Purchases: ObservableObject {
             }
         }
         Task { await loadProduct() }
+        #if os(iOS)
+        // Compra começada na página do app na App Store (sem abrir o app):
+        // aparelho de revenda nunca compra pela Apple — renova com a revenda
+        if #available(iOS 16.4, *) {
+            intents?.cancel()
+            intents = Task {
+                for await intent in PurchaseIntent.intents {
+                    await self.handleIntent(intent)
+                }
+            }
+        }
+        #endif
     }
+
+    #if os(iOS)
+    private var intents: Task<Void, Never>?
+
+    @available(iOS 16.4, *)
+    private func handleIntent(_ intent: PurchaseIntent) async {
+        let app = AppState.shared
+        if !app.canPurchase {
+            app.show(t("iap_reseller"), seconds: 6)
+            return
+        }
+        guard intent.product.id == Config.productYear else { return }
+        product = intent.product
+        if let e = await buy() { app.show(e, seconds: 5) }
+    }
+    #endif
 
     func loadProduct() async {
         if product != nil { return }

@@ -69,7 +69,7 @@ enum L10n {
             "iap_terms": "Assinatura de 1 ano com renovação automática pela sua conta Apple. Cancele quando quiser nos Ajustes > Apple ID > Assinaturas, até 24 horas antes da renovação.",
             "iap_ok": "Assinatura ativada!", "iap_fail": "Não foi possível concluir a compra.", "iap_pending": "Compra aguardando aprovação.",
             "iap_none": "Nenhuma assinatura encontrada nesta conta Apple.", "iap_unavailable": "A assinatura não está disponível agora. Tente mais tarde.",
-            "iap_manage": "Gerenciar assinatura", "iap_manage_tv": "Para gerenciar, abra Ajustes > Usuários e Contas > Assinaturas.",
+            "iap_reseller": "Este aparelho é de uma revenda. Renove com a sua revenda.", "iap_manage": "Gerenciar assinatura", "iap_manage_tv": "Para gerenciar, abra Ajustes > Usuários e Contas > Assinaturas.",
         ],
         "en": [
             "lic_reset": "Reset license", "lic_reset_msg": "This unlinks this device from the current reseller and erases the lists. Then you can enter a new code. Continue?",
@@ -128,7 +128,7 @@ enum L10n {
             "iap_terms": "1-year subscription, renewed automatically through your Apple account. Cancel anytime in Settings > Apple ID > Subscriptions, at least 24 hours before renewal.",
             "iap_ok": "Subscription activated!", "iap_fail": "Could not complete the purchase.", "iap_pending": "Purchase waiting for approval.",
             "iap_none": "No subscription found on this Apple account.", "iap_unavailable": "The subscription is not available right now. Try again later.",
-            "iap_manage": "Manage subscription", "iap_manage_tv": "To manage it, open Settings > Users and Accounts > Subscriptions.",
+            "iap_reseller": "This device belongs to a reseller. Renew with your reseller.", "iap_manage": "Manage subscription", "iap_manage_tv": "To manage it, open Settings > Users and Accounts > Subscriptions.",
         ],
         "es": [
             "lic_reset": "Restablecer licencia", "lic_reset_msg": "Esto desvincula este dispositivo del revendedor actual y borra las listas. Luego escribes un nuevo código. ¿Deseas continuar?",
@@ -187,7 +187,7 @@ enum L10n {
             "iap_terms": "Suscripción de 1 año con renovación automática por tu cuenta Apple. Cancela cuando quieras en Ajustes > Apple ID > Suscripciones, hasta 24 horas antes de la renovación.",
             "iap_ok": "¡Suscripción activada!", "iap_fail": "No fue posible completar la compra.", "iap_pending": "Compra esperando aprobación.",
             "iap_none": "No se encontró ninguna suscripción en esta cuenta Apple.", "iap_unavailable": "La suscripción no está disponible ahora. Intenta más tarde.",
-            "iap_manage": "Administrar suscripción", "iap_manage_tv": "Para administrarla, abre Ajustes > Usuarios y cuentas > Suscripciones.",
+            "iap_reseller": "Este dispositivo es de un revendedor. Renueva con tu revendedor.", "iap_manage": "Administrar suscripción", "iap_manage_tv": "Para administrarla, abre Ajustes > Usuarios y cuentas > Suscripciones.",
         ],
     ]
 }
