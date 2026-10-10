@@ -5,7 +5,7 @@
 #    (precisa dos segredos ASC_KEY, ASC_KEY_ID, ASC_ISSUER_ID e APPLE_TEAM_ID no GitHub).
 name: ios-build
 concurrency:
-  group: ios-${{ github.ref }}
+  group: ios-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 on:
   push:
@@ -29,7 +29,7 @@ jobs:
       - name: Xcode
         run: |
           ls -d /Applications/Xcode*.app
-          XC=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)
+          XC=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)  # a App Store só aceita apps feitos com o Xcode 26 ou mais novo
           sudo xcode-select -s "$XC"
           xcodebuild -version
 
@@ -80,7 +80,8 @@ jobs:
           BP_TEST_CODE: ${{ secrets.BP_TEST_CODE }}
         run: |
           mkdir -p shots
-          pick() { xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; l=[x['udid'] for k,v in d.items() for x in v if x['name'].startswith('$1')]; print(l[0] if l else '')"; }
+          # primeiro simulador que existir entre os nomes (cada Xcode traz modelos diferentes)
+          pick() { xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; names=sys.argv[1:]; l=[x['udid'] for n in names for k,v in d.items() for x in v if x['name'].startswith(n)]; print(l[0] if l else '')" "$@"; }
           shoot() {
             local udid=$1 app=$2 name=$3
             [ -z "$udid" ] && { echo "sem simulador para $name"; return; }
@@ -100,8 +101,8 @@ jobs:
             xcrun simctl spawn "$udid" log show --last 6m --style compact --predicate 'eventMessage CONTAINS "[bp-"' > "shots/$name-log.txt" 2>&1 || true
             xcrun simctl shutdown "$udid" || true
           }
-          shoot "$(pick 'iPhone 16 Pro Max')" dd/Build/Products/Debug-iphonesimulator/IPTVBestPro.app iphone
-          shoot "$(pick 'iPad Pro 13')" dd/Build/Products/Debug-iphonesimulator/IPTVBestPro.app ipad
+          shoot "$(pick 'iPhone 17 Pro Max' 'iPhone 16 Pro Max' 'iPhone 16 Plus')" dd/Build/Products/Debug-iphonesimulator/IPTVBestPro.app iphone
+          shoot "$(pick 'iPad Pro 13' 'iPad Pro (12.9')" dd/Build/Products/Debug-iphonesimulator/IPTVBestPro.app ipad
           shoot "$(pick 'Apple TV 4K')" dd/Build/Products/Debug-appletvsimulator/IPTVBestProTV.app appletv
           ls -la shots
 
@@ -127,7 +128,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Xcode
         run: |
-          XC=$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)
+          XC=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)  # a App Store só aceita apps feitos com o Xcode 26 ou mais novo
           sudo xcode-select -s "$XC"
       - name: Gerar o projeto
         run: brew install xcodegen && xcodegen generate
