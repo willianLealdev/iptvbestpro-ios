@@ -66,8 +66,8 @@ jobs:
       - name: Rede (imagens do painel)
         run: |
           for u in https://iptvbestpro.com/assets/images/brand/iptvbestpro_logo.png https://iptvbestpro.com/tv/bg.jpg http://iptvbestpro.com/images/; do
-            curl -s -o /dev/null -w "$u %{http_code} %{content_type}
-" -A IPTVSmartersPlayer "$u" || true
+            curl -s -o /dev/null -w "$u %{http_code} %{content_type} " -A IPTVSmartersPlayer "$u" || true
+            echo
           done
 
       - name: Prints no simulador
