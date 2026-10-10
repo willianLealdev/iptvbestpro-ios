@@ -19,6 +19,8 @@ on:
 
 jobs:
   build:
+    # no envio para o TestFlight não precisa repetir os testes (economiza minutos do Mac)
+    if: "!(github.event_name == 'workflow_dispatch' && inputs.upload)"
     runs-on: macos-15
     timeout-minutes: 75
     steps:
@@ -115,7 +117,6 @@ jobs:
 
   testflight:
     if: github.event_name == 'workflow_dispatch' && inputs.upload
-    needs: build
     runs-on: macos-15
     timeout-minutes: 75
     env:
@@ -143,6 +144,9 @@ jobs:
           for pair in "IPTVBestPro:iOS" "IPTVBestProTV:tvOS"; do
             S=${pair%%:*}; P=${pair##*:}
             xcodebuild archive -project IPTVBestPro.xcodeproj -scheme $S -configuration Release -destination "generic/platform=$P" \
-              -archivePath build/$S.xcarchive BP_TEAM_ID=$TEAM CURRENT_PROJECT_VERSION=${{ github.run_number }} $AUTH -quiet
+              -archivePath build/$S.xcarchive BP_TEAM_ID=$TEAM CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+              CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO -quiet
+            # compilado sem assinar; a exportação assina já como App Store (certificado gerenciado pela Apple),
+            # sem precisar de aparelho cadastrado nem de perfil de desenvolvimento
             xcodebuild -exportArchive -archivePath build/$S.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build/$S $AUTH
           done
