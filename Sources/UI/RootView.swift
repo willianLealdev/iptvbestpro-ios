@@ -48,6 +48,10 @@ struct NoListView: View {
     @EnvironmentObject var app: AppState
     @State private var busy = false
     var body: some View {
+        let up = app.status.s("upload_url")
+        if !up.isEmpty { UploadListView(url: up) } else { plain }
+    }
+    private var plain: some View {
         ScrollView {
             CardBox {
                 RemoteImage(url: app.brand.logo, fill: false, placeholder: "").frame(width: UIScale.v(80, 100, 160), height: UIScale.v(80, 100, 160))
@@ -62,6 +66,44 @@ struct NoListView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, UIScale.v(30, 60, 80))
+        }
+    }
+}
+
+/// Aparelho de servidor parceiro sem lista: QR code da página /lista; confere a cada 5 segundos se a lista chegou
+struct UploadListView: View {
+    @EnvironmentObject var app: AppState
+    let url: String
+    var body: some View {
+        ScrollView {
+            CardBox {
+                RemoteImage(url: app.brand.logo, fill: false, placeholder: "").frame(width: UIScale.v(70, 90, 140), height: UIScale.v(70, 90, 140))
+                Text(t("up_title")).font(.system(size: UIScale.title, weight: .bold)).foregroundColor(.white).multilineTextAlignment(.center)
+                Text(t("up_msg")).font(.system(size: UIScale.body)).foregroundColor(.white.opacity(0.8)).multilineTextAlignment(.center)
+                QRCodeView(text: url).frame(width: UIScale.v(190, 230, 360), height: UIScale.v(190, 230, 360))
+                Text(url.replacingOccurrences(of: "https://", with: "").components(separatedBy: "?").first ?? url)
+                    .font(.system(size: UIScale.body, weight: .bold)).foregroundColor(.white)
+                #if os(iOS)
+                if let u = URL(string: url) { Link(t("up_open"), destination: u).buttonStyle(PillStyle(primary: true)) }
+                #endif
+                DeviceIDBox()
+                HStack(spacing: 8) { ProgressView(); Text(t("up_wait")).foregroundColor(.white.opacity(0.7)) }
+                NavigationLinkSettingsReset()
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, UIScale.v(30, 60, 80))
+        }
+        .task {
+            // confere a cada 5 segundos; quando a lista chega, entra no app
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                if Task.isCancelled { break }
+                if let j = try? await API.panel("get_device_user", [:]),
+                   (j as? [JObj] ?? []).contains(where: { !$0.s("user_name").isEmpty }) {
+                    await app.loadPlaylists(chooser: false)
+                    break
+                }
+            }
         }
     }
 }
