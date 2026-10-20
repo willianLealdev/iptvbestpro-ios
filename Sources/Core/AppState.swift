@@ -234,14 +234,9 @@ final class AppState: ObservableObject {
             if playlists.count > 1 { route = .playlists } else { route = .noList }
             return
         }
-        let si = j.o("server_info")
-        let proto = si.s("server_protocol").isEmpty ? "http" : si.s("server_protocol")
-        let port = proto == "https" ? si.s("https_port") : si.s("port")
-        var stream = base
-        if !si.s("url").isEmpty {
-            stream = proto + "://" + si.s("url")
-            if !port.isEmpty && port != "80" && port != "443" { stream += ":" + port }
-        }
+        // links dos vídeos sempre pelo DNS cadastrado no painel: o servidor informado no login atende várias IPTVs,
+        // quem define o conteúdo é o DNS
+        let stream = base
         playlist = pl
         login = j
         xtream = Xtream(apiBase: base, streamBase: stream, user: pl.s("user_name"), pass: pl.s("user_password"))
