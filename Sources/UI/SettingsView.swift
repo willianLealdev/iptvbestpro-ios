@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var pinSheet = false
     @State private var showSupport = false
     @State private var showDevice = false
+    @State private var showSubscription = false
     @State private var cacheSize = ""
     @State private var iapError = ""
     @ObservedObject private var iap = Purchases.shared
@@ -71,13 +72,7 @@ struct SettingsView: View {
                         app.show(t("cache_cleared"))
                     }
                     if app.canPurchase {
-                        row("creditcard", t("iap_title"), iap.price) {
-                            choice = Choice(title: t("iap_title"), options: [
-                                (iap.price.isEmpty ? t("iap_buy") : t("iap_buy_price", iap.price), { Task { if let e = await iap.buy() { app.show(e, seconds: 5) } } }),
-                                (t("iap_restore"), { Task { if let e = await iap.restore() { app.show(e, seconds: 5) } } }),
-                                (t("iap_manage"), { manageSubscriptions() }),
-                            ])
-                        }
+                        row("creditcard", t("iap_title"), iap.price) { showSubscription = true }
                     }
                     #if os(iOS)
                     if let u = URL(string: Config.privacyURL) {
@@ -113,6 +108,7 @@ struct SettingsView: View {
         .alert(t("device"), isPresented: $showDevice) { Button(t("close"), role: .cancel) {} } message: { Text(DeviceID.value) }
         .sheet(isPresented: $pinSheet) { AdultPinSheet(onDone: { tick += 1 }) }
         .sheet(isPresented: $showSupport) { SupportSheet() }
+        .sheet(isPresented: $showSubscription) { SubscriptionSheet().environmentObject(app) }
     }
 
     private var effectiveMulti: Int { DeviceInfo.isPhone ? 2 : (Prefs.multiLayout == 2 ? 2 : 4) }

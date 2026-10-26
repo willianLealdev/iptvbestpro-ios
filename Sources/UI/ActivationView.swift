@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 
 /// Ativação: código da revenda (6 letras) ou da assinatura (8 números).
 /// Cliente direto (sem revenda) também pode assinar pela Apple — aparelho de revenda nunca vê a compra.
@@ -135,7 +136,7 @@ struct PurchaseBox: View {
 /// O que o cliente recebe pelo preço: tabela Sem assinatura × Com assinatura (exigência da Apple, diretriz 3.1.2(c))
 struct PlanCompare: View {
     @EnvironmentObject var app: AppState
-    private let rows = ["iap_row1", "iap_row2", "iap_row3", "iap_row4"]
+    private let rows: [(String, Bool)] = [("iap_row0", true), ("iap_row1", false), ("iap_row2", false), ("iap_row3", false), ("iap_row4", false)]
 
     var body: some View {
         VStack(alignment: .leading, spacing: UIScale.v(6, 8, 12)) {
@@ -146,10 +147,10 @@ struct PlanCompare: View {
                 Text(t("iap_paid")).frame(width: UIScale.v(70, 90, 130))
             }
             .font(.system(size: UIScale.small * 0.9, weight: .bold)).foregroundColor(.white.opacity(0.75))
-            ForEach(rows, id: \.self) { k in
+            ForEach(rows, id: \.0) { r in
                 HStack(alignment: .top) {
-                    Text(t(k)).font(.system(size: UIScale.small)).foregroundColor(.white).frame(maxWidth: .infinity, alignment: .leading)
-                    Image(systemName: "xmark.circle.fill").foregroundColor(.red.opacity(0.8)).frame(width: UIScale.v(70, 90, 130))
+                    Text(t(r.0)).font(.system(size: UIScale.small)).foregroundColor(.white).frame(maxWidth: .infinity, alignment: .leading)
+                    Image(systemName: r.1 ? "checkmark.circle.fill" : "xmark.circle.fill").foregroundColor(r.1 ? app.brand.accent : .red.opacity(0.8)).frame(width: UIScale.v(70, 90, 130))
                     Image(systemName: "checkmark.circle.fill").foregroundColor(app.brand.accent).frame(width: UIScale.v(70, 90, 130))
                 }
             }
@@ -157,5 +158,33 @@ struct PlanCompare: View {
         }
         .padding(UIScale.v(10, 12, 18))
         .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.07)))
+    }
+}
+
+/// Tela da assinatura aberta em Ajustes: preço, o que o cliente recebe, Sem assinatura × Com assinatura, comprar, restaurar e gerenciar
+struct SubscriptionSheet: View {
+    @EnvironmentObject var app: AppState
+    @Environment(\.dismiss) private var dismiss
+    @State private var error = ""
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: UIScale.v(12, 16, 26)) {
+                PurchaseBox(error: $error)
+                Button(t("iap_manage")) {
+                    #if os(iOS)
+                    if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                        Task { try? await AppStore.showManageSubscriptions(in: scene) }
+                    }
+                    #else
+                    app.show(t("iap_manage_tv"), seconds: 6)
+                    #endif
+                }.buttonStyle(PillStyle())
+                if !error.isEmpty { Text(error).font(.system(size: UIScale.small)).foregroundColor(.red.opacity(0.9)).multilineTextAlignment(.center) }
+                Button(t("close")) { dismiss() }.buttonStyle(PillStyle())
+            }
+            .padding(UIScale.pad)
+        }
+        .background(Color.black.opacity(0.92).ignoresSafeArea())
     }
 }
