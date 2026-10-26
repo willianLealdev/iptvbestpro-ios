@@ -104,6 +104,7 @@ struct PurchaseBox: View {
         VStack(spacing: UIScale.v(10, 12, 20)) {
             Divider().background(Color.white.opacity(0.2)).padding(.vertical, 4)
             Text(t("iap_title")).font(.system(size: UIScale.body * 1.1, weight: .bold)).foregroundColor(.white)
+            PlanCompare()
             Button {
                 Task { if let e = await iap.buy() { error = e } }
             } label: {
@@ -128,5 +129,33 @@ struct PurchaseBox: View {
             #endif
         }
         .task { await iap.loadProduct() }
+    }
+}
+
+/// O que o cliente recebe pelo preço: tabela Sem assinatura × Com assinatura (exigência da Apple, diretriz 3.1.2(c))
+struct PlanCompare: View {
+    @EnvironmentObject var app: AppState
+    private let rows = ["iap_row1", "iap_row2", "iap_row3", "iap_row4"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: UIScale.v(6, 8, 12)) {
+            Text(t("iap_what")).font(.system(size: UIScale.small * 1.05, weight: .semibold)).foregroundColor(.white)
+            HStack {
+                Spacer()
+                Text(t("iap_free")).frame(width: UIScale.v(70, 90, 130))
+                Text(t("iap_paid")).frame(width: UIScale.v(70, 90, 130))
+            }
+            .font(.system(size: UIScale.small * 0.9, weight: .bold)).foregroundColor(.white.opacity(0.75))
+            ForEach(rows, id: \.self) { k in
+                HStack(alignment: .top) {
+                    Text(t(k)).font(.system(size: UIScale.small)).foregroundColor(.white).frame(maxWidth: .infinity, alignment: .leading)
+                    Image(systemName: "xmark.circle.fill").foregroundColor(.red.opacity(0.8)).frame(width: UIScale.v(70, 90, 130))
+                    Image(systemName: "checkmark.circle.fill").foregroundColor(app.brand.accent).frame(width: UIScale.v(70, 90, 130))
+                }
+            }
+            Text(t("iap_free_note")).font(.system(size: UIScale.small * 0.9)).foregroundColor(.white.opacity(0.65))
+        }
+        .padding(UIScale.v(10, 12, 18))
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.07)))
     }
 }
