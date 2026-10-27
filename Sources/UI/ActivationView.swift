@@ -100,6 +100,7 @@ struct PurchaseBox: View {
     @EnvironmentObject var app: AppState
     @ObservedObject var iap = Purchases.shared
     @Binding var error: String
+    @State private var legal: LegalSheet.Kind?
 
     var body: some View {
         VStack(spacing: UIScale.v(10, 12, 20)) {
@@ -125,10 +126,14 @@ struct PurchaseBox: View {
             }
             .font(.system(size: UIScale.small)).foregroundColor(app.brand.accent)
             #else
-            Text(t("terms") + ": apple.com/legal/internet-services/itunes/dev/stdeula  ·  " + t("privacy") + ": iptvbestpro.com/privacy_policy")
-                .font(.system(size: UIScale.small * 0.9)).foregroundColor(.white.opacity(0.55)).multilineTextAlignment(.center)
+            // Apple TV não abre links: Termos de Uso e Privacidade abrem dentro do app (texto vem do painel)
+            HStack(spacing: 24) {
+                Button(t("terms")) { legal = .terms }.buttonStyle(PillStyle())
+                Button(t("privacy")) { legal = .privacy }.buttonStyle(PillStyle())
+            }
             #endif
         }
+        .sheet(item: $legal) { k in LegalSheet(kind: k).environmentObject(app) }
         .task { await iap.loadProduct() }
     }
 }
@@ -186,5 +191,47 @@ struct SubscriptionSheet: View {
             .padding(UIScale.pad)
         }
         .background(Color.black.opacity(0.92).ignoresSafeArea())
+    }
+}
+
+/// Termos de Uso e Política de Privacidade dentro do app (exigência da Apple, diretriz 3.1.2(c)); o texto vem do painel
+struct LegalSheet: View {
+    enum Kind: String, Identifiable { case terms, privacy; var id: String { rawValue } }
+    let kind: Kind
+    @EnvironmentObject var app: AppState
+    @Environment(\.dismiss) private var dismiss
+    @State private var text = ""
+    @State private var failed = false
+
+    var body: some View {
+        VStack(spacing: UIScale.v(10, 14, 22)) {
+            Text(t(kind == .terms ? "terms" : "privacy")).font(.system(size: UIScale.body * 1.2, weight: .bold)).foregroundColor(.white)
+            ScrollView {
+                Group {
+                    if text.isEmpty { if failed { Text(t("iap_unavailable")) } else { ProgressView() } }
+                    else { Text(text).multilineTextAlignment(.leading) }
+                }
+                .font(.system(size: UIScale.small)).foregroundColor(.white)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(UIScale.v(8, 12, 20))
+                #if os(tvOS)
+                .focusable()
+                #endif
+            }
+            Button(t("close")) { dismiss() }.buttonStyle(PillStyle(primary: true))
+        }
+        .padding(UIScale.pad)
+        .background(Color.black.opacity(0.95).ignoresSafeArea())
+        .task { await load() }
+    }
+
+    private func load() async {
+        let lang = ["pt", "en", "es"].contains(L10n.current) ? L10n.current : "en"
+        guard let url = URL(string: Config.server + "/legal_text.php?lang=" + lang) else { failed = true; return }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            if let j = try JSONSerialization.jsonObject(with: data) as? [String: Any], let v = j[kind == .terms ? "terms" : "privacy"] as? String, !v.isEmpty { text = v }
+            else { failed = true }
+        } catch { failed = true }
     }
 }
