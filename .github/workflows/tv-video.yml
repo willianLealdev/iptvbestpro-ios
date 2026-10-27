@@ -48,22 +48,28 @@ jobs:
           xcrun simctl launch "$UDID" com.iptvbestpro.app -bpTestCode "$CODE" -bpScreen home; sleep 25
           xcrun simctl terminate "$UDID" com.iptvbestpro.app || true
           cat > rec.py <<'EOF'
-          import os, signal, subprocess, sys, time
+          import os, subprocess, sys, time
           udid, code = sys.argv[1], sys.argv[2]
           app = "com.iptvbestpro.app"
+          os.makedirs("frames", exist_ok=True)
+          n = 0
           def sh(*a): subprocess.run(["xcrun", "simctl", *a], check=False)
-          rec = subprocess.Popen(["xcrun", "simctl", "io", udid, "recordVideo", "--codec", "h264", "--force", "video/apple-tv-assinatura.mp4"])
-          time.sleep(4)
-          for scr, wait in (("subscription", 22), ("terms", 20), ("privacy", 20)):
+          def shot():
+              global n
+              sh("io", udid, "screenshot", "--type=jpeg", "frames/f%04d.jpg" % n)
+              n += 1
+          # o gravador de vídeo do simulador de Apple TV não gera arquivo: tira capturas em sequência e monta o vídeo com o ffmpeg
+          for scr, wait in (("subscription", 24), ("terms", 22), ("privacy", 22)):
               sh("launch", udid, app, "-bpTestCode", code, "-bpScreen", scr)
-              time.sleep(wait)
+              t0 = time.time()
+              while time.time() - t0 < wait: shot()
               if scr == "privacy": sh("io", udid, "screenshot", "video/apple-tv-privacidade.png")
               sh("terminate", udid, app)
-          rec.send_signal(signal.SIGINT)
-          try: rec.wait(timeout=60)
-          except Exception: rec.kill()
+          print("capturas:", n)
           EOF
           python3 rec.py "$UDID" "$CODE"
+          brew install ffmpeg
+          ffmpeg -y -framerate 1 -i frames/f%04d.jpg -vf "scale=1920:-2,format=yuv420p" -c:v libx264 -movflags +faststart video/apple-tv-assinatura.mp4
           xcrun simctl terminate "$UDID" com.iptvbestpro.app || true
           xcrun simctl shutdown "$UDID" || true
           ls -la video
