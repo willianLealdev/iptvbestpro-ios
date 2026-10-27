@@ -11,7 +11,12 @@ final class Purchases: ObservableObject {
     @Published var busy = false
     private var updates: Task<Void, Never>?
 
+    #if DEBUG
+    // Só no simulador do GitHub (vídeo para a Apple): sem a App Store o produto não carrega; mostra o mesmo preço da análise
+    var price: String { product?.displayPrice ?? (UserDefaults.standard.string(forKey: "bpScreen") != nil ? "US$ 9.99" : "") }
+    #else
     var price: String { product?.displayPrice ?? "" }
+    #endif
 
     func start() {
         updates?.cancel()

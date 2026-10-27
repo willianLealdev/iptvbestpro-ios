@@ -1,0 +1,74 @@
+# Grava um vídeo do app de Apple TV no simulador (a Apple pediu uma gravação de tela da assinatura com os links de
+# Termos de Uso e Política de Privacidade dentro do app). Roda só quando pedido ("Run workflow").
+name: tv-video
+on:
+  workflow_dispatch:
+jobs:
+  video:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xcode
+        run: |
+          XC=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
+
+      - name: Gerar o projeto
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Baixar pacotes
+        run: xcodebuild -resolvePackageDependencies -project IPTVBestPro.xcodeproj -clonedSourcePackagesDirPath spm
+
+      - name: Compilar Apple TV (simulador)
+        run: |
+          set -o pipefail
+          xcodebuild build -project IPTVBestPro.xcodeproj -scheme IPTVBestProTV -configuration Debug \
+            -destination 'generic/platform=tvOS Simulator' -derivedDataPath dd -clonedSourcePackagesDirPath spm \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee tv-sim.log | grep -E "error:|BUILD" || true
+          grep -q "BUILD SUCCEEDED" tv-sim.log
+
+      - name: Gravar o vídeo
+        env:
+          BP_TEST_CODE: ${{ secrets.BP_TEST_CODE }}
+        run: |
+          mkdir -p video
+          CODE="${BP_TEST_CODE:-17107050}"
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; l=[x['udid'] for k,v in d.items() if 'tvOS' in k for x in v if 'Apple TV 4K' in x['name']]; print(l[0] if l else '')")
+          echo "simulador: $UDID"
+          [ -z "$UDID" ] && { echo "sem simulador de Apple TV"; exit 1; }
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b || true
+          xcrun simctl install "$UDID" dd/Build/Products/Debug-appletvsimulator/IPTVBestProTV.app
+          # liga o aparelho com o código de demonstração (uma vez) antes de gravar
+          xcrun simctl launch "$UDID" com.iptvbestpro.app -bpTestCode "$CODE" -bpScreen home; sleep 25
+          xcrun simctl terminate "$UDID" com.iptvbestpro.app || true
+          xcrun simctl io "$UDID" recordVideo --codec h264 --force video/apple-tv-assinatura.mp4 &
+          REC=$!
+          sleep 3
+          # 1) Ajustes > Assinatura anual: título, duração, preço, o que recebe, comparação, comprar/restaurar, botões de Termos e Privacidade
+          xcrun simctl launch "$UDID" com.iptvbestpro.app -bpTestCode "$CODE" -bpScreen subscription; sleep 22
+          xcrun simctl terminate "$UDID" com.iptvbestpro.app || true
+          # 2) Termos de Uso abertos dentro do app
+          xcrun simctl launch "$UDID" com.iptvbestpro.app -bpTestCode "$CODE" -bpScreen terms; sleep 20
+          xcrun simctl terminate "$UDID" com.iptvbestpro.app || true
+          # 3) Política de Privacidade aberta dentro do app
+          xcrun simctl launch "$UDID" com.iptvbestpro.app -bpTestCode "$CODE" -bpScreen privacy; sleep 20
+          xcrun simctl io "$UDID" screenshot video/apple-tv-privacidade.png
+          kill -INT $REC || true
+          sleep 6
+          xcrun simctl terminate "$UDID" com.iptvbestpro.app || true
+          xcrun simctl shutdown "$UDID" || true
+          ls -la video
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: apple-tv-video
+          path: |
+            video/*
+            tv-sim.log

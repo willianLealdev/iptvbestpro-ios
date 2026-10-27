@@ -58,6 +58,8 @@ struct HomeView: View {
     @EnvironmentObject var player: PlayerCenter
     @State private var path: [Dest] = []
     @State private var showSupport = false
+    @State private var dbgSubscription = false
+    @State private var dbgLegal: LegalSheet.Kind?
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -87,6 +89,14 @@ struct HomeView: View {
             if let sc = app.debugScreen, path.isEmpty, let a = HomeAction(rawValue: sc == "play" ? "live" : sc) {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) { run(a) }
             }
+            // vídeo para a Apple: abre a assinatura e os Termos / Privacidade dentro do app
+            if let sc = app.debugScreen {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    if sc == "subscription" { dbgSubscription = true }
+                    if sc == "terms" { dbgLegal = .terms }
+                    if sc == "privacy" { dbgLegal = .privacy }
+                }
+            }
             #endif
         }
         .onChange(of: path.count) { n in
@@ -94,6 +104,8 @@ struct HomeView: View {
             if n == 0 { app.homeAppeared() }
         }
         .sheet(isPresented: $showSupport) { SupportSheet() }
+        .sheet(isPresented: $dbgSubscription) { SubscriptionSheet().environmentObject(app) }
+        .sheet(item: $dbgLegal) { k in LegalSheet(kind: k).environmentObject(app) }
         .sheet(item: Binding(get: { app.expiryNotice.map { ExpiryBox(days: $0) } }, set: { app.expiryNotice = $0?.days })) { b in
             ExpirySheet(days: b.days)
         }
