@@ -47,20 +47,23 @@ jobs:
           # liga o aparelho com o código de demonstração (uma vez) antes de gravar
           xcrun simctl launch "$UDID" com.iptvbestpro.app -bpTestCode "$CODE" -bpScreen home; sleep 25
           xcrun simctl terminate "$UDID" com.iptvbestpro.app || true
-          xcrun simctl io "$UDID" recordVideo --codec h264 --force video/apple-tv-assinatura.mp4 &
-          REC=$!
-          sleep 3
-          # 1) Ajustes > Assinatura anual: título, duração, preço, o que recebe, comparação, comprar/restaurar, botões de Termos e Privacidade
-          xcrun simctl launch "$UDID" com.iptvbestpro.app -bpTestCode "$CODE" -bpScreen subscription; sleep 22
-          xcrun simctl terminate "$UDID" com.iptvbestpro.app || true
-          # 2) Termos de Uso abertos dentro do app
-          xcrun simctl launch "$UDID" com.iptvbestpro.app -bpTestCode "$CODE" -bpScreen terms; sleep 20
-          xcrun simctl terminate "$UDID" com.iptvbestpro.app || true
-          # 3) Política de Privacidade aberta dentro do app
-          xcrun simctl launch "$UDID" com.iptvbestpro.app -bpTestCode "$CODE" -bpScreen privacy; sleep 20
-          xcrun simctl io "$UDID" screenshot video/apple-tv-privacidade.png
-          kill -INT $REC || true
-          sleep 6
+          cat > rec.py <<'EOF'
+          import os, signal, subprocess, sys, time
+          udid, code = sys.argv[1], sys.argv[2]
+          app = "com.iptvbestpro.app"
+          def sh(*a): subprocess.run(["xcrun", "simctl", *a], check=False)
+          rec = subprocess.Popen(["xcrun", "simctl", "io", udid, "recordVideo", "--codec", "h264", "--force", "video/apple-tv-assinatura.mp4"])
+          time.sleep(4)
+          for scr, wait in (("subscription", 22), ("terms", 20), ("privacy", 20)):
+              sh("launch", udid, app, "-bpTestCode", code, "-bpScreen", scr)
+              time.sleep(wait)
+              if scr == "privacy": sh("io", udid, "screenshot", "video/apple-tv-privacidade.png")
+              sh("terminate", udid, app)
+          rec.send_signal(signal.SIGINT)
+          try: rec.wait(timeout=60)
+          except Exception: rec.kill()
+          EOF
+          python3 rec.py "$UDID" "$CODE"
           xcrun simctl terminate "$UDID" com.iptvbestpro.app || true
           xcrun simctl shutdown "$UDID" || true
           ls -la video
